@@ -1,6 +1,7 @@
 from fastapi import Query, APIRouter, Body, HTTPException, status
 
-from sqlalchemy import select, insert
+from sqlalchemy import select, insert, delete
+from fastapi.responses import HTMLResponse
 
 from src.api.dependencies import PaginationDep
 from src.database import async_session_marker
@@ -31,7 +32,7 @@ async def one_weeks_tas(weekday: str):
     async with async_session_marker() as session:
         query = select(TasksOrm).where(TasksOrm.weekday.ilike(f'%{weekday}%'))
         result = await session.execute(query)
-        tasks = result.scalar()
+        tasks = result.scalars().all()
 
 
     return tasks if tasks else []
@@ -68,7 +69,6 @@ async def create_task(task_data: TaskAdd = Body(openapi_examples={
 @router.patch("/tasks/{task_id}/complete", summary="Отметить задачу выполненной")
 async def mark_task_completed(task_id: int):
     async with async_session_marker() as session:
-        # Находим задачу
         stmt = select(TasksOrm).where(TasksOrm.id == task_id)
         result = await session.execute(stmt)
         task = result.scalar_one_or_none()
@@ -76,8 +76,24 @@ async def mark_task_completed(task_id: int):
         if not task:
             raise HTTPException(404, detail="Задача не найдена")
 
-        # Меняем статус
-        task.is_done = True
+        task.is_done = not task.is_done
         await session.commit()
 
         return {"status": "OK", "message": f"Задача '{task.title}' отмечена выполненной"}
+
+
+@router.delete("/{task_id}/", summary="Удаление Задачи")
+async def delete_task(task_id: int):
+    async with async_session_marker() as session:
+        stmt = select(TasksOrm.title).where(TasksOrm.id == task_id)
+        result = await session.execute(stmt)
+        task_title = result.scalar_one_or_none()
+
+        if not task_title:
+            raise HTTPException(404, detail=f"Задача {task_id} не найдена")
+
+        stmt_delete = delete(TasksOrm).where(TasksOrm.id == task_id)
+        await session.execute(stmt_delete)
+        await session.commit()
+
+    return {"status": "OK", "message": f"Задача '{task_title}' удалена"}

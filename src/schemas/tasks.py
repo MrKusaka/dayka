@@ -6,13 +6,14 @@ from pydantic import BaseModel, Field, ConfigDict
 
 class Weekday(str, Enum):
     MONDAY = "monday"
-    user = "user"
-    guest = "guest"
+    TUESDAY = "tuesday"
+    WEDNESDAY = "wednesday"
+    THURSDAY = "thursday"
+    FRIDAY = "friday"
+    SATURDAY = "saturday"
+    SUNDAY = "sunday"
 
 
 class TaskAdd(BaseModel):
-    weekday: Weekday = Field(
-        example=Weekday.MONDAY,  # Ключевой параметр!
-        description="Выберите день недели"
-    )
+    weekday: Weekday
     title: str
